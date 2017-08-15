@@ -37,12 +37,15 @@ cq:wrap(function ()
   until quit
 end)
 
+local wholeft = playnum
+
 repeat
   local evt = tfx.pollevent(100)
   cq:step(0)
   if queue[1] then
     local mupd = {string.match(queue[1], 'update{(%d):(%d):(%d):(%d):(%d):(%d):(%d):(%d):(%d)}')}
     local mtrn = {string.match(queue[1], 'now:(%d)')}
+    local mcls = {string.match(queue[1], 'close:(%d)')}
     table.remove(queue,1)
     if mupd[1] then
       tfx.setcell(1,1,mupd[1])
@@ -56,6 +59,9 @@ repeat
       tfx.setcell(3,3,mupd[9])
     elseif mtrn[1] then
       pturn = tonumber(mtrn[1])
+    elseif mcls[1] then
+      wholeft = mcls[1]
+      quit = true
     end
   else
     tfx.printat(1,11,toe) -- received nil
@@ -78,3 +84,5 @@ until quit
 ws:send('quit:' .. playnum)
 ws:close()
 tfx.shutdown()
+
+print('player ' .. wholeft .. ' has left')

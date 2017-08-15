@@ -49,6 +49,11 @@ cq:wrap(function ()
           wsock:send(msg)
         end
       end
+      local function send_close()
+        for _,wsock in ipairs(state.sockets) do
+          wsock:send('close:' .. player)
+        end
+      end
 
       local ws = websocket.new_from_stream(st, st:get_headers())
       ws:accept(); print('accepted')
@@ -70,7 +75,7 @@ cq:wrap(function ()
         if mput[1] then
           -- update fields
           print('put log',mput[1],mput[2])
-          if tonumber(mput[2]) == state.turn then
+          if tonumber(mput[2]) == state.turn and state.fields[tonumber(mput[1])] == 0 then
             state.fields[tonumber(mput[1])] = tonumber(mput[2])
             -- send back updated to both clients
             send_updates()
@@ -89,8 +94,10 @@ cq:wrap(function ()
             send_turn()
           end
         elseif mqt[1] then
-          state.socket[tonumber(mqt[1])] = nil
-          state.pc = state.pc - 1
+          -- state.socket[tonumber(mqt[1])] = nil
+          -- state.pc = state.pc - 1
+          send_close()
+          break
         else
           print(text, 'not matching any pattern')
         end
