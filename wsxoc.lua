@@ -10,6 +10,7 @@ local ws = websocket.new_from_uri("ws://127.0.0.1:4000")
 print('connecting:',ws:connect())
 
 local playnum = 0
+local pturn = 0
 
 local is_welcome, toe = ws:receive()
 if is_welcome then
@@ -27,28 +28,37 @@ local cq = cqueues.new()
 
 local recv, toe
 
+local queue = {}
+
 cq:wrap(function ()
   repeat
     recv, toe = ws:receive()
+    table.insert(queue,recv)
   until quit
 end)
 
 repeat
   local evt = tfx.pollevent(100)
   cq:step(0)
-  if recv then
-    local mupd = {string.match(recv, 'update{(%d):(%d):(%d):(%d):(%d):(%d):(%d):(%d):(%d)}')}
-    tfx.setcell(1,1,mupd[1])
-    tfx.setcell(2,1,mupd[2])
-    tfx.setcell(3,1,mupd[3])
-    tfx.setcell(1,2,mupd[4])
-    tfx.setcell(2,2,mupd[5])
-    tfx.setcell(3,2,mupd[6])
-    tfx.setcell(1,3,mupd[7])
-    tfx.setcell(2,3,mupd[8])
-    tfx.setcell(3,3,mupd[9])
+  if queue[1] then
+    local mupd = {string.match(queue[1], 'update{(%d):(%d):(%d):(%d):(%d):(%d):(%d):(%d):(%d)}')}
+    local mtrn = {string.match(queue[1], 'now:(%d)')}
+    table.remove(queue,1)
+    if mupd[1] then
+      tfx.setcell(1,1,mupd[1])
+      tfx.setcell(2,1,mupd[2])
+      tfx.setcell(3,1,mupd[3])
+      tfx.setcell(1,2,mupd[4])
+      tfx.setcell(2,2,mupd[5])
+      tfx.setcell(3,2,mupd[6])
+      tfx.setcell(1,3,mupd[7])
+      tfx.setcell(2,3,mupd[8])
+      tfx.setcell(3,3,mupd[9])
+    elseif mtrn[1] then
+      pturn = tonumber(mtrn[1])
+    end
   else
-    tfx.printat(1,11,toe)
+    tfx.printat(1,11,toe) -- received nil
   end
   if evt then
     if evt.type == 'key' then
@@ -61,9 +71,10 @@ repeat
     end
   end
   tfx.printat(tfx.width() - 10, 2, "player " .. playnum)
+  tfx.printat(tfx.width() - 10, 4, "now " .. pturn)
   tfx.present()
 until quit
 
-ws:send('quit ' .. playnum)
+ws:send('quit:' .. playnum)
 ws:close()
 tfx.shutdown()
