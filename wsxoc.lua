@@ -39,6 +39,8 @@ end)
 
 local wholeft = playnum
 
+local points = {0,0}
+
 repeat
   local evt = tfx.pollevent(100)
   cq:step(0)
@@ -46,6 +48,7 @@ repeat
     local mupd = {string.match(queue[1], 'update{(%d):(%d):(%d):(%d):(%d):(%d):(%d):(%d):(%d)}')}
     local mtrn = {string.match(queue[1], 'now:(%d)')}
     local mcls = {string.match(queue[1], 'close:(%d)')}
+    local mpts = {string.match(queue[1], 'points:(%d+):(%d+)')}
     table.remove(queue,1)
     if mupd[1] then
       tfx.setcell(1,1,mupd[1])
@@ -62,6 +65,9 @@ repeat
     elseif mcls[1] then
       wholeft = mcls[1]
       quit = true
+    elseif mpts[1] then
+      points[1] = tonumber(mpts[1])
+      points[2] = tonumber(mpts[2])
     end
   else
     tfx.printat(1,11,toe) -- received nil
@@ -78,6 +84,7 @@ repeat
   end
   tfx.printat(tfx.width() - 10, 2, "player " .. playnum)
   tfx.printat(tfx.width() - 10, 4, "now " .. pturn)
+  tfx.printat(tfx.width() - 10, 6, "+ " .. points[1] .. ' ' .. points[2])
   tfx.present()
 until quit
 

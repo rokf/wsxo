@@ -6,6 +6,25 @@ local websocket = require 'http.websocket'
 local cqueues = require 'cqueues'
 -- local serpent = require 'serpent'
 
+local function checkwin(f)
+  local g = {
+    {1,2,3},
+    {4,5,6},
+    {7,8,9},
+    {1,4,7},
+    {2,5,8},
+    {3,6,9},
+    {1,5,9},
+    {7,5,3}
+  }
+  for _,v in ipairs(g) do
+    if f[v[1]] == f[v[2]] and f[v[1]] == f[v[3]] and f[v[1]] ~= 0 then
+      return f[v[1]]
+    end
+  end
+  return 0
+end
+
 local cq = cqueues.new()
 
 cq:wrap(function ()
@@ -19,6 +38,7 @@ cq:wrap(function ()
     sockets = {},
     restart = {false, false},
     turn = 1,
+    points = {0,0}
   }
   local player = 0
   setmetatable(state.fields, {
@@ -54,7 +74,18 @@ cq:wrap(function ()
           wsock:send('close:' .. player)
         end
       end
-
+      local function send_points()
+        for _,wsock in ipairs(state.sockets) do
+          wsock:send('points:' .. state.points[1] .. ':' .. state.points[2])
+        end
+      end
+      local function reset_game()
+        for i,_ in ipairs(state.fields) do state.fields[i] = 0 end
+        state.restart = {false,false}
+        state.turn = 1
+        send_updates()
+        send_turn()
+      end
       local ws = websocket.new_from_stream(st, st:get_headers())
       ws:accept(); print('accepted')
       state.pc = state.pc + 1
@@ -79,19 +110,22 @@ cq:wrap(function ()
             state.fields[tonumber(mput[1])] = tonumber(mput[2])
             -- send back updated to both clients
             send_updates()
-            -- switch player in turn
-            if state.turn == 1 then state.turn = 2 else state.turn = 1 end
-            send_turn()
+            local winner = checkwin(state.fields)
+            if winner ~= 0 then
+              state.points[winner] = state.points[winner] + 1
+              send_points()
+              reset_game()
+            else
+              -- switch player in turn
+              if state.turn == 1 then state.turn = 2 else state.turn = 1 end
+              send_turn()
+            end
           end
         elseif mres[1] then
           state.restart[tonumber(mres[1])] = true
           if state.restart[1] and state.restart[2] then
             -- have to restart the game
-            for i,_ in ipairs(state.fields) do state.fields[i] = 0 end
-            state.restart = {false,false}
-            state.turn = 1
-            send_updates()
-            send_turn()
+            reset_game()
           end
         elseif mqt[1] then
           -- state.socket[tonumber(mqt[1])] = nil
